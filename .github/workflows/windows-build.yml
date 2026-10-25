@@ -20,9 +20,9 @@ jobs:
         with:
           dotnet-version: "10.0.x"
       - name: Restore
-        run: dotnet restore src/OnlineLauncher/OnlineLauncher.csproj
+        run: dotnet restore src/OnlineLauncher/OnlineLauncher.csproj --runtime win-x64
       - name: Build Release
-        run: dotnet build src/OnlineLauncher/OnlineLauncher.csproj --configuration Release --no-restore
+        run: dotnet build src/OnlineLauncher/OnlineLauncher.csproj --configuration Release --no-restore --runtime win-x64
       - name: Publish Windows x64 artifact
         run: dotnet publish src/OnlineLauncher/OnlineLauncher.csproj --configuration Release --no-restore --runtime win-x64 --self-contained false --output artifacts/launcher
       - name: Upload launcher artifact
