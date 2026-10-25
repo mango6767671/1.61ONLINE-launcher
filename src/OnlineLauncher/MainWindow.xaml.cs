@@ -363,6 +363,17 @@ public partial class MainWindow : Window
         }
 
         var old = _session;
+        if (!string.IsNullOrWhiteSpace(old.CurrentSessionId))
+        {
+            try
+            {
+                using var left = await AuthorizedPostAsync($"v1/sessions/{Uri.EscapeDataString(old.CurrentSessionId)}/leave", new Dictionary<string, object>());
+            }
+            catch
+            {
+                // Local sign-out must still work if the service is unreachable. If possible, remove the lobby membership first.
+            }
+        }
         try
         {
             using var _ = await _api.PostJsonAsync("v1/auth/logout", new { refreshToken = old.RefreshToken });
@@ -557,7 +568,7 @@ public partial class MainWindow : Window
                     {
                         row.Children.Add(MakeAsyncButton("ACCEPT", async () =>
                         {
-                            using var accepted = await AuthorizedPostAsync($"v1/social/friend-requests/{Uri.EscapeDataString(userId)}/accept", new { });
+                            using var accepted = await AuthorizedPostAsync($"v1/social/friend-requests/{Uri.EscapeDataString(userId)}/accept", new Dictionary<string, object>());
                             SetStatus($"You and {name} are now friends");
                             await ShowSocialPageAsync();
                         }, true));
@@ -595,7 +606,7 @@ public partial class MainWindow : Window
                 {
                     try
                     {
-                        using var left = await AuthorizedPostAsync($"v1/sessions/{Uri.EscapeDataString(_session.CurrentSessionId!)}/leave", new { });
+                        using var left = await AuthorizedPostAsync($"v1/sessions/{Uri.EscapeDataString(_session.CurrentSessionId!)}/leave", new Dictionary<string, object>());
                         _session!.CurrentSessionId = null;
                         WindowsSecretStore.Save(_settings.Environment, _session);
                         SetStatus("Left the community lobby record");
@@ -674,7 +685,7 @@ public partial class MainWindow : Window
                 {
                     var join = MakeAsyncButton(string.Equals(_session.CurrentSessionId, id, StringComparison.OrdinalIgnoreCase) ? "CURRENT LOBBY" : "JOIN LOBBY", async () =>
                     {
-                        using var joined = await AuthorizedPostAsync($"v1/sessions/{Uri.EscapeDataString(id)}/join", new { });
+                        using var joined = await AuthorizedPostAsync($"v1/sessions/{Uri.EscapeDataString(id)}/join", new Dictionary<string, object>());
                         _session!.CurrentSessionId = GetString(joined.RootElement, "sessionId") ?? id;
                         WindowsSecretStore.Save(_settings.Environment, _session);
                         SetStatus("Joined community lobby record; no game connection was started");
