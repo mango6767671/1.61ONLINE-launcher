@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using System.Windows.Threading;
 
 namespace OnlineLauncher;
 
@@ -13,6 +14,7 @@ public partial class MainWindow : Window
     private readonly LauncherSettings _settings;
     private CommunityApiClient _api;
     private AuthSession? _session;
+    private readonly DispatcherTimer _presenceTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     private TextBox? _authEmail;
     private PasswordBox? _authPassword;
     private TextBlock? _authMessage;
@@ -27,8 +29,9 @@ public partial class MainWindow : Window
         var initialUrl = IsUsableUrl(_settings.ActiveApiUrl) ? _settings.ActiveApiUrl : "http://127.0.0.1:3000/";
         _api = new CommunityApiClient(initialUrl);
         _session = WindowsSecretStore.Load(_settings.Environment);
+        _presenceTimer.Tick += async (_, _) => await SendPresenceHeartbeatAsync();
         Loaded += async (_, _) => await InitializeAsync();
-        Closed += (_, _) => _api.Dispose();
+        Closed += (_, _) => { _presenceTimer.Stop(); _api.Dispose(); };
         NavigateHome();
         UpdateEnvironmentHeader();
         UpdateAccountHeader();
@@ -45,6 +48,7 @@ public partial class MainWindow : Window
             {
                 using var account = await AuthorizedGetAsync("v1/client/account");
                 UpdateAccountHeader(account.RootElement);
+                StartPresenceTimer();
             }
         }
         catch (Exception ex)
@@ -123,6 +127,7 @@ public partial class MainWindow : Window
             if (auth.User?.Id is not null) _session.UserId = auth.User.Id;
             WindowsSecretStore.Save(_settings.Environment, _session);
             UpdateAccountHeader();
+            StartPresenceTimer();
             return true;
         }
         catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
@@ -166,6 +171,33 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task<JsonDocument> AuthorizedPutAsync(string path, object body)
+    {
+        if (_session is null) throw new ApiException(HttpStatusCode.Unauthorized, "Sign in to use this feature.");
+        if (!await EnsureFreshSessionAsync()) throw new ApiException(HttpStatusCode.Unauthorized, "Your session expired. Please sign in again.");
+        return await _api.PutJsonAsync(path, body, _session.AccessToken);
+    }
+
+    private void StartPresenceTimer()
+    {
+        if (_session is null) return;
+        _presenceTimer.Start();
+        _ = SendPresenceHeartbeatAsync();
+    }
+
+    private async Task SendPresenceHeartbeatAsync()
+    {
+        if (_session is null) return;
+        try
+        {
+            using var response = await AuthorizedPutAsync("v1/presence/heartbeat", new { status = "online" });
+        }
+        catch (Exception ex)
+        {
+            SetStatus(UserFacingError(ex));
+        }
+    }
+
     private async Task<JsonDocument> AuthorizedPatchAsync(string path, object body)
     {
         if (_session is null) throw new ApiException(HttpStatusCode.Unauthorized, "Sign in to use this feature.");
@@ -182,6 +214,7 @@ public partial class MainWindow : Window
 
     private void ClearLocalSession()
     {
+        _presenceTimer.Stop();
         WindowsSecretStore.Delete(_settings.Environment);
         _session = null;
         UpdateAccountHeader();
@@ -687,6 +720,7 @@ public partial class MainWindow : Window
                 _api = newClient;
                 oldClient.Dispose();
                 _session = WindowsSecretStore.Load(_settings.Environment);
+                if (_session is null) _presenceTimer.Stop(); else StartPresenceTimer();
                 UpdateEnvironmentHeader();
                 UpdateAccountHeader();
                 await RefreshServiceStatusAsync();
