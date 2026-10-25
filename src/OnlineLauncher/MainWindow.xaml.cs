@@ -19,6 +19,7 @@ public partial class MainWindow : Window
     private PasswordBox? _authPassword;
     private TextBlock? _authMessage;
     private bool _registrationMode;
+    private string? _startupNotice;
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
@@ -26,8 +27,14 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         _settings = LauncherSettings.Load();
-        var initialUrl = IsUsableUrl(_settings.ActiveApiUrl) ? _settings.ActiveApiUrl : "http://127.0.0.1:3000/";
-        _api = new CommunityApiClient(initialUrl);
+        if (!string.IsNullOrEmpty(_settings.ValidateActiveEndpoint()))
+        {
+            _settings.Environment = "Local";
+            if (!string.IsNullOrEmpty(_settings.ValidateActiveEndpoint()))
+                _settings.LocalApiUrl = "http://127.0.0.1:3000/";
+            _startupNotice = "The saved endpoint was invalid or insecure. Using Local Development; review Settings before switching to Public.";
+        }
+        _api = new CommunityApiClient(_settings.ActiveApiUrl);
         _session = WindowsSecretStore.Load(_settings.Environment);
         _presenceTimer.Tick += async (_, _) => await SendPresenceHeartbeatAsync();
         Loaded += async (_, _) => await InitializeAsync();
@@ -40,6 +47,7 @@ public partial class MainWindow : Window
     private async Task InitializeAsync()
     {
         await RefreshServiceStatusAsync();
+        if (!string.IsNullOrWhiteSpace(_startupNotice)) SetStatus(_startupNotice);
         if (_session is null) return;
 
         try
@@ -127,7 +135,6 @@ public partial class MainWindow : Window
             if (auth.User?.Id is not null) _session.UserId = auth.User.Id;
             WindowsSecretStore.Save(_settings.Environment, _session);
             UpdateAccountHeader();
-            StartPresenceTimer();
             return true;
         }
         catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
@@ -336,6 +343,7 @@ public partial class MainWindow : Window
             };
             WindowsSecretStore.Save(_settings.Environment, _session);
             UpdateAccountHeader();
+            StartPresenceTimer();
             SetStatus("Signed in successfully");
             await RefreshServiceStatusAsync();
             NavigateHome();
