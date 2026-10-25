@@ -13,6 +13,7 @@ public sealed class AuthSession
     public string AccessToken { get; set; } = "";
     public string RefreshToken { get; set; } = "";
     public DateTimeOffset AccessTokenExpiresAtUtc { get; set; }
+    public string? CurrentSessionId { get; set; }
 }
 
 public static class WindowsSecretStore
