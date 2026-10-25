@@ -587,13 +587,36 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (!string.IsNullOrWhiteSpace(_session.CurrentSessionId))
+        {
+            root.Children.Add(InfoCard("YOUR CURRENT LOBBY", "You're in a community session",
+                "This is a community membership record, not a live game connection. Leave it before creating or joining another lobby.",
+                MakeAsyncButton("LEAVE CURRENT SESSION", async () =>
+                {
+                    try
+                    {
+                        using var left = await AuthorizedPostAsync($"v1/sessions/{Uri.EscapeDataString(_session.CurrentSessionId!)}/leave", new { });
+                        _session!.CurrentSessionId = null;
+                        WindowsSecretStore.Save(_settings.Environment, _session);
+                        SetStatus("Left the community lobby record");
+                    }
+                    catch (ApiException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+                    {
+                        _session!.CurrentSessionId = null;
+                        WindowsSecretStore.Save(_settings.Environment, _session);
+                        SetStatus("Previous lobby record was already closed");
+                    }
+                    await ShowSessionsPageAsync();
+                }, true)));
+        }
+
         var createCard = new StackPanel();
         createCard.Children.Add(Text("CREATE A PUBLIC SESSION", 10, "#E6B84A", true, 0, 6));
         var nameBox = new TextBox { Text = "Freemode community session", MaxLength = 48, Width = 380, HorizontalAlignment = HorizontalAlignment.Left };
         createCard.Children.Add(FieldLabel("SESSION NAME"));
         createCard.Children.Add(nameBox);
         createCard.Children.Add(Text("Region: us-east · Mode: freemode · Capacity: 16 players", 11, "#AEB2BA", false, 0, 10));
-        createCard.Children.Add(MakeAsyncButton("CREATE SESSION", async () =>
+        var createSessionButton = MakeAsyncButton("CREATE SESSION", async () =>
         {
             var name = nameBox.Text.Trim();
             if (name.Length < 3 || name.Length > 48) { SetStatus("Session name must be 3–48 characters"); return; }
@@ -605,9 +628,20 @@ public partial class MainWindow : Window
                 visibility = "public",
                 maxPlayers = 16
             });
+            if (created.RootElement.TryGetProperty("session", out var createdSession))
+            {
+                var createdId = GetString(createdSession, "id");
+                if (!string.IsNullOrWhiteSpace(createdId))
+                {
+                    _session!.CurrentSessionId = createdId;
+                    WindowsSecretStore.Save(_settings.Environment, _session);
+                }
+            }
             SetStatus("Community session created (lobby record only)");
             await ShowSessionsPageAsync();
-        }, true));
+        }, true);
+        createSessionButton.IsEnabled = string.IsNullOrWhiteSpace(_session.CurrentSessionId);
+        createCard.Children.Add(createSessionButton);
         root.Children.Add(Card(createCard));
 
         var listPanel = new StackPanel();
@@ -638,12 +672,15 @@ public partial class MainWindow : Window
                 var row = new DockPanel { LastChildFill = true };
                 if (!string.IsNullOrWhiteSpace(id))
                 {
-                    var join = MakeAsyncButton("JOIN LOBBY", async () =>
+                    var join = MakeAsyncButton(string.Equals(_session.CurrentSessionId, id, StringComparison.OrdinalIgnoreCase) ? "CURRENT LOBBY" : "JOIN LOBBY", async () =>
                     {
                         using var joined = await AuthorizedPostAsync($"v1/sessions/{Uri.EscapeDataString(id)}/join", new { });
+                        _session!.CurrentSessionId = GetString(joined.RootElement, "sessionId") ?? id;
+                        WindowsSecretStore.Save(_settings.Environment, _session);
                         SetStatus("Joined community lobby record; no game connection was started");
                         await ShowSessionsPageAsync();
                     }, true);
+                    join.IsEnabled = string.IsNullOrWhiteSpace(_session.CurrentSessionId);
                     DockPanel.SetDock(join, Dock.Right);
                     row.Children.Add(join);
                 }
