@@ -1,0 +1,33 @@
+name: Windows launcher build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - name: Restore
+        run: dotnet restore src/OnlineLauncher/OnlineLauncher.csproj --runtime win-x64
+      - name: Build Release
+        run: dotnet build src/OnlineLauncher/OnlineLauncher.csproj --configuration Release --no-restore --runtime win-x64
+      - name: Publish Windows x64 artifact
+        run: dotnet publish src/OnlineLauncher/OnlineLauncher.csproj --configuration Release --no-restore --runtime win-x64 --self-contained false --output artifacts/launcher
+      - name: Upload launcher artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 1.61ONLINE-launcher-win-x64
+          path: artifacts/launcher/
+          if-no-files-found: error
