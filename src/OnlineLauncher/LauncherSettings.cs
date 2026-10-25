@@ -59,6 +59,9 @@ public sealed class LauncherSettings
             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
             return "Enter a valid absolute API URL, including https:// or http://.";
 
+        if (!string.IsNullOrWhiteSpace(uri.UserInfo))
+            return "Do not put usernames or passwords in the API URL. Use a URL without embedded credentials.";
+
         if (string.Equals(Environment, "Public", StringComparison.OrdinalIgnoreCase) && uri.Scheme != Uri.UriSchemeHttps)
             return "Public mode requires HTTPS so account credentials and tokens are not sent over plain HTTP.";
 
