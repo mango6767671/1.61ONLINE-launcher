@@ -204,16 +204,16 @@ public partial class MainWindow : Window
         heroStack.Children.Add(Text("COMMUNITY-POWERED", 11, "#E6B84A", true));
         heroStack.Children.Add(Text("Your community.\nYour next session.", 34, "#FFFFFF", true, 0, 9));
         heroStack.Children.Add(Text("A dedicated desktop home for 1.61ONLINE accounts, friends and community lobby discovery.", 14, "#C7C9CE", false, 0, 16));
-        heroStack.Children.Add(MakeButton("EXPLORE SESSIONS", async () => await ShowSessionsPageAsync(), true));
+        heroStack.Children.Add(MakeAsyncButton("EXPLORE SESSIONS", async () => await ShowSessionsPageAsync(), true));
         hero.Child = heroStack;
         content.Children.Add(hero);
 
         var grid = new UniformGrid { Columns = 2, Rows = 1, Margin = new Thickness(0, 0, 0, 18) };
         grid.Children.Add(InfoCard("SOCIAL", "Find your people", "Search community profiles, send friend requests and manage accepted friends.",
-            MakeButton("OPEN SOCIAL", async () => await ShowSocialPageAsync())));
+            MakeAsyncButton("OPEN SOCIAL", async () => await ShowSocialPageAsync())));
         grid.Children.Add(InfoCard("YOUR ACCOUNT", _session is null ? "Make it yours" : "You're signed in",
             _session is null ? "Sign in or create a community account. Tokens are protected by Windows for your user account." : $"Connected as {_session.Email}. Your sign-in is stored securely on this Windows profile.",
-            MakeButton(_session is null ? "SIGN IN" : "VIEW PROFILE", async () => { if (_session is null) ShowAuthPage(false); else await ShowProfilePageAsync(); }, _session is null)));
+            MakeAsyncButton(_session is null ? "SIGN IN" : "VIEW PROFILE", async () => { if (_session is null) ShowAuthPage(false); else await ShowProfilePageAsync(); }, _session is null)));
         content.Children.Add(grid);
 
         content.Children.Add(Text("BEFORE YOU PLAY", 10, "#E6B84A", true, 0, 9));
@@ -256,7 +256,7 @@ public partial class MainWindow : Window
         _authMessage = Text("", 12, "#E6B84A", false, 0, 12);
         _authMessage.TextWrapping = TextWrapping.Wrap;
         form.Children.Add(_authMessage);
-        form.Children.Add(MakeButton(register ? "CREATE ACCOUNT" : "SIGN IN", SubmitAuthAsync, true));
+        form.Children.Add(MakeAsyncButton(register ? "CREATE ACCOUNT" : "SIGN IN", SubmitAuthAsync, true));
         var modeButton = MakeButton(register ? "I ALREADY HAVE AN ACCOUNT" : "CREATE A NEW ACCOUNT", () => ShowAuthPage(!register));
         modeButton.Margin = new Thickness(0, 12, 0, 0);
         modeButton.HorizontalAlignment = HorizontalAlignment.Left;
@@ -381,7 +381,7 @@ public partial class MainWindow : Window
             var displayName = new TextBox { Width = 420, HorizontalAlignment = HorizontalAlignment.Left, MaxLength = 32, Text = GetString(player, "displayName") ?? "" };
             cardStack.Children.Add(displayName);
             cardStack.Children.Add(Text("Name must be 3–32 characters and may use letters, numbers, spaces, underscores or hyphens.", 11, "#777D87", false, 0, 12));
-            cardStack.Children.Add(MakeButton("SAVE PROFILE", async () =>
+            cardStack.Children.Add(MakeAsyncButton("SAVE PROFILE", async () =>
             {
                 var value = displayName.Text.Trim();
                 if (value.Length < 3 || value.Length > 32) { SetStatus("Display name must be 3–32 characters"); return; }
@@ -394,7 +394,7 @@ public partial class MainWindow : Window
         {
             cardStack.Children.Clear();
             cardStack.Children.Add(Text(UserFacingError(ex), 13, "#E6B84A", false));
-            cardStack.Children.Add(MakeButton("RETRY", async () => await ShowProfilePageAsync()));
+            cardStack.Children.Add(MakeAsyncButton("RETRY", async () => await ShowProfilePageAsync()));
         }
     }
 
@@ -420,7 +420,7 @@ public partial class MainWindow : Window
         var searchRow = new StackPanel { Orientation = Orientation.Horizontal };
         searchBox.Margin = new Thickness(0, 6, 10, 12);
         searchRow.Children.Add(searchBox);
-        searchRow.Children.Add(MakeButton("SEARCH", async () => await SearchPlayersAsync(searchBox.Text, results), true));
+        searchRow.Children.Add(MakeAsyncButton("SEARCH", async () => await SearchPlayersAsync(searchBox.Text, results), true));
         searchPanel.Children.Add(searchRow);
         searchPanel.Children.Add(results);
         root.Children.Add(Card(searchPanel));
@@ -462,7 +462,7 @@ public partial class MainWindow : Window
             var row = new DockPanel { Margin = new Thickness(0, 6, 0, 6), LastChildFill = true };
             if (!string.IsNullOrWhiteSpace(userId))
             {
-                var add = MakeButton("ADD FRIEND", async () =>
+                var add = MakeAsyncButton("ADD FRIEND", async () =>
                 {
                     using var sent = await AuthorizedPostAsync("v1/social/friend-requests", new { targetUserId = userId });
                     SetStatus($"Friend request sent to {name}");
@@ -514,7 +514,7 @@ public partial class MainWindow : Window
                     row.Children.Add(Text(name, 13, "#F4F4F5", true, 0, 8));
                     if (!string.IsNullOrWhiteSpace(userId))
                     {
-                        row.Children.Add(MakeButton("ACCEPT", async () =>
+                        row.Children.Add(MakeAsyncButton("ACCEPT", async () =>
                         {
                             using var accepted = await AuthorizedPostAsync($"v1/social/friend-requests/{Uri.EscapeDataString(userId)}/accept", new { });
                             SetStatus($"You and {name} are now friends");
@@ -552,7 +552,7 @@ public partial class MainWindow : Window
         createCard.Children.Add(FieldLabel("SESSION NAME"));
         createCard.Children.Add(nameBox);
         createCard.Children.Add(Text("Region: us-east · Mode: freemode · Capacity: 16 players", 11, "#AEB2BA", false, 0, 10));
-        createCard.Children.Add(MakeButton("CREATE SESSION", async () =>
+        createCard.Children.Add(MakeAsyncButton("CREATE SESSION", async () =>
         {
             var name = nameBox.Text.Trim();
             if (name.Length < 3 || name.Length > 48) { SetStatus("Session name must be 3–48 characters"); return; }
@@ -597,7 +597,7 @@ public partial class MainWindow : Window
                 var row = new DockPanel { LastChildFill = true };
                 if (!string.IsNullOrWhiteSpace(id))
                 {
-                    var join = MakeButton("JOIN LOBBY", async () =>
+                    var join = MakeAsyncButton("JOIN LOBBY", async () =>
                     {
                         using var joined = await AuthorizedPostAsync($"v1/sessions/{Uri.EscapeDataString(id)}/join", new { });
                         SetStatus("Joined community lobby record; no game connection was started");
@@ -665,7 +665,7 @@ public partial class MainWindow : Window
 
         form.Children.Add(Text("Security: public mode only accepts HTTPS. Passwords are never saved. Session tokens are encrypted using Windows DPAPI for the current Windows user. A game path is saved only; launching or modifying the game is not enabled in this foundation.", 11, "#8D929B", false, 0, 14));
         var buttons = new StackPanel { Orientation = Orientation.Horizontal };
-        buttons.Children.Add(MakeButton("SAVE & APPLY", async () =>
+        buttons.Children.Add(MakeAsyncButton("SAVE & APPLY", async () =>
         {
             _settings.Environment = environmentPicker.SelectedIndex == 1 ? "Public" : "Local";
             _settings.LocalApiUrl = localUrl.Text.Trim();
@@ -698,7 +698,7 @@ public partial class MainWindow : Window
                 SetStatus(UserFacingError(ex));
             }
         }, true));
-        buttons.Children.Add(MakeButton("TEST CONNECTION", async () => await RefreshServiceStatusAsync()));
+        buttons.Children.Add(MakeAsyncButton("TEST CONNECTION", async () => await RefreshServiceStatusAsync()));
         buttons.Children[1].SetValue(FrameworkElement.MarginProperty, new Thickness(10, 0, 0, 0));
         form.Children.Add(buttons);
 
@@ -755,7 +755,7 @@ public partial class MainWindow : Window
         return button;
     }
 
-    private Button MakeButton(string caption, Func<Task> action, bool primary = false)
+    private Button MakeAsyncButton(string caption, Func<Task> action, bool primary = false)
     {
         var button = new Button
         {
