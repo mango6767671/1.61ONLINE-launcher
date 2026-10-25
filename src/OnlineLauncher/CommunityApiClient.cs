@@ -60,6 +60,8 @@ public sealed class CommunityApiClient : IDisposable
 
     public Task<JsonDocument> PatchJsonAsync(string path, object body, string? accessToken = null, CancellationToken cancellationToken = default) =>
         SendJsonAsync(HttpMethod.Patch, path, body, accessToken, cancellationToken);
+    public Task<JsonDocument> PutJsonAsync(string path, object body, string? accessToken = null, CancellationToken cancellationToken = default) =>
+        SendJsonAsync(HttpMethod.Put, path, body, accessToken, cancellationToken);
 
     public Task<JsonDocument> DeleteJsonAsync(string path, string? accessToken = null, CancellationToken cancellationToken = default) =>
         SendJsonAsync(HttpMethod.Delete, path, null, accessToken, cancellationToken);
