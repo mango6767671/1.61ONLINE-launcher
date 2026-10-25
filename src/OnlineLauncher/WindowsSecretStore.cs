@@ -39,6 +39,11 @@ public static class WindowsSecretStore
             try { File.Delete(path); } catch (IOException) { }
             return null;
         }
+        catch (Win32Exception)
+        {
+            try { File.Delete(path); } catch (IOException) { }
+            return null;
+        }
         catch (JsonException)
         {
             try { File.Delete(path); } catch (IOException) { }
